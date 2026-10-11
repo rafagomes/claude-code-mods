@@ -41,5 +41,8 @@ declare module 'claude-code' {
     // `beat` counts the ticks of the band's loading bars while a turn works: a
     // value of its own, so a tick redraws the band and not the transcript.
     toolbar: { view: Toolbar; clean: Clean; beat: number }
+    // The english-coach mod's switch, as its own contract declares it: read
+    // for the card's row, never written here.
+    'english-coach': { on: boolean }
   }
 }

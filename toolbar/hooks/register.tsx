@@ -100,6 +100,11 @@ const clean = atom({ plugin: 'toolbar', key: 'clean' } as const, CLEAN)
 // The ticks ./clean counts while a turn works: where the loading bars are.
 const beat = atom({ plugin: 'toolbar', key: 'beat' } as const, 0)
 
+// The english-coach mod's own switch, read here and flipped by its command.
+// That mod writes it at session start: never written, it is not loaded, and
+// the card has no row for it.
+const coach = { plugin: 'english-coach', key: 'on' } as const
+
 const toggleClean = ($: EngineInterface) =>
   update($, clean, saved => ({ ...wholeClean(saved), on: !wholeClean(saved).on }))
 
@@ -234,6 +239,7 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Button, Text } = $.ui.resolve(e)
+    const { value: coachOn } = await $.state.get(coach)
     const { tasks } = view
     const done = tasks.filter(task => task.status === 'completed').length
     const upcoming = tasks.find(task => task.status === 'pending')
@@ -410,6 +416,19 @@ export const register: Register = (on, options) => {
                 onPress={() => toggleClean($)}
               />
             </Box>
+            {coachOn !== undefined && (
+              <Box justifyContent="space-between">
+                <Text>
+                  English Coach <Text dimColor> corrections and a word to learn</Text>
+                </Text>
+                <Button
+                  key="coach"
+                  label={coachOn ? '● On' : '○ Off'}
+                  variant={coachOn ? 'primary' : 'secondary'}
+                  onPress={() => run($, 'english-coach', coachOn ? 'off' : 'on')}
+                />
+              </Box>
+            )}
             <Box justifyContent="space-between">
               <Text>
                 Project <Text dimColor> this project's root</Text>

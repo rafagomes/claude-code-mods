@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { Engine } from 'claude-code/testing'
+import type { Engine, Plugin } from 'claude-code/testing'
 import type { CommandRunInput, On, RenderElement, RenderPropsOf } from 'claude-code'
 
 // Only the props the mod reads; the engine fills the rest in a session.
@@ -292,6 +292,56 @@ test("Open in VS Code opens the project's root and leaves the card open", async 
   expect(session.spawned).toEqual([['open', '-a', 'Visual Studio Code', '/repo']])
   expect(session.toasts).toEqual([])
   expect(await isOpen($)).toBe(true)
+})
+
+// The english-coach mod as the card sees it: its switch written at session
+// start, and flipped by its own command.
+const coach: Plugin = {
+  name: 'english-coach',
+  register: on => {
+    on('session.start', async ($, e, next) => {
+      await $.state.set({ plugin: 'english-coach', key: 'on' }, true)
+
+      return next(e)
+    })
+    on('command.run', { command: 'english-coach' }, async ($, e) => {
+      await $.state.set({ plugin: 'english-coach', key: 'on' }, e.args === 'on')
+
+      return { text: '' }
+    })
+  },
+}
+
+const coachLabel = async ($: Engine) => {
+  const ui = await band($)
+  const found = await ui.find({ key: 'coach' })
+  await ui.unmount()
+
+  return found?.props.label
+}
+
+test('switches the English coach through its own command and leaves the card open', { plugins: [coach] }, async ($, on) => {
+  world(on)
+
+  await $.session.start(START)
+  await toggle($)
+  expect(await coachLabel($)).toBe('● On')
+
+  await press($, 'coach')
+  expect(await coachLabel($)).toBe('○ Off')
+
+  await press($, 'coach')
+  expect(await coachLabel($)).toBe('● On')
+  expect(await isOpen($)).toBe(true)
+})
+
+test('has no English coach row when that mod is not loaded', async ($, on) => {
+  world(on)
+
+  await $.session.start(START)
+  await toggle($)
+
+  expect(await coachLabel($)).toBeUndefined()
 })
 
 test('says so when VS Code does not open', async ($, on) => {
