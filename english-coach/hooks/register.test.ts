@@ -74,6 +74,7 @@ test('drops a tip that is malformed or would not fit one line', () => {
   expect(tip(JSON.stringify({ phrase: 'x'.repeat(61), meaning: 'm' }))).toBeNull()
   expect(tip(JSON.stringify({ phrase: 'p', meaning: 'm'.repeat(121) }))).toBeNull()
   expect(tip(JSON.stringify({ phrase: 'p', meaning: 'one\ntwo' }))).toBeNull()
+  expect(tip(JSON.stringify({ phrase: '\u001b[31mp', meaning: 'm' }))).toBeNull()
 })
 
 // The session beneath the mod: every prompt the coach sends to the model.
@@ -138,6 +139,8 @@ test('/english-coach with no argument toggles', async ($, on) => {
   await $.session.start(START)
   expect((await coach($, '')).text).toBe('English coach off.')
   expect((await coach($, '')).text).toBe('English coach on.')
+  expect((await coach($, 'of')).text).toBe('Usage: /english-coach [on|off]')
+  expect((await coach($, '')).text).toBe('English coach off.')
 })
 
 test('adds the tip as the last transcript line', () => {

@@ -43,7 +43,7 @@ function parseTip(raw: unknown): Tip | null {
   if (!isStr(t.phrase) || !isStr(t.meaning)) return null
   const phrase = t.phrase.trim()
   const meaning = t.meaning.trim()
-  if (phrase.length > 60 || meaning.length > 120 || /[\r\n]/.test(phrase + meaning)) return null
+  if (phrase.length > 60 || meaning.length > 120 || /[\u0000-\u001f\u007f]/.test(phrase + meaning)) return null
   return { phrase, meaning }
 }
 
@@ -128,7 +128,8 @@ export const register: Register = on => {
 
   on('command.run', { command: 'english-coach' }, async ($, e) => {
     const arg = e.args.trim()
-    const isOn = arg === 'on' || (arg !== 'off' && !(await read($, enabled)))
+    if (arg !== '' && arg !== 'on' && arg !== 'off') return { text: 'Usage: /english-coach [on|off]' }
+    const isOn = arg === 'on' || (arg === '' && !(await read($, enabled)))
     await update($, enabled, () => isOn)
     if (!isOn) {
       // Off also takes down the feedback on show and any check in flight.

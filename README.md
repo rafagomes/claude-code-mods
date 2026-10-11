@@ -41,7 +41,7 @@ Each prompt you write is checked for grammar *and* fluency — phrasing that is 
 - **Checked:** prompts typed at the terminal or sent through Remote Control. Prompts from the SDK, background tasks, peers and schedules are not.
 - **Sent:** your own words from the prompt — pasted blocks and fenced code are stripped first — capped at 3,000 characters, one Haiku request per prompt.
 - **Skipped entirely:** slash commands, `!` shell lines, and prompts with fewer than four of your own words left after stripping.
-- **Switched off and on:** `/english-coach off` stops the checks for the rest of the session and takes the band down; `/english-coach on` resumes them, and with no argument it toggles. Every session starts with it on. With the toolbar mod installed, the same switch is a row in its card.
+- **Switched off and on:** `/english-coach off` stops the checks for the rest of the session and takes the band down; `/english-coach on` resumes them, and with no argument it toggles; anything else changes nothing. Every session starts with it on. With the toolbar mod installed, the same switch is a row in its card.
 - **Tuned for Portuguese speakers:** the coaching prompt describes the writer as a Brazilian software engineer and looks for literal translations and false friends from Portuguese. It works for anyone, but edit `SYSTEM` in `english-coach/hooks/register.tsx` to describe yourself.
 
 ### toolbar
