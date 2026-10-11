@@ -118,7 +118,19 @@ IFS=$'\x1f' read -r \
           (.thinking.enabled // false | tostring),
           .output_style.name // "",
           (.exceeds_200k_tokens // false | tostring)
-        ] | map(tostring | gsub("[\n\r\t]"; " ")) | join("\u001f")' 2>/dev/null)"
+        ] | map(tostring | gsub("[[:cntrl:]]"; " ")) | join("\u001f")' 2>/dev/null)"
+
+# The numeric fields feed $(( )), and bash arithmetic evaluates what it is
+# given — a value like `x[$(cmd)]` would run cmd. The payload is not ours, so
+# anything that is not a plain integer is replaced before it is used.
+for _v in ctx_pct ctx_size in_tok out_tok h5_reset d7_reset; do
+    case "${!_v}" in ''|*[!0-9]*|????????????????*) printf -v "$_v" '%s' 0 ;; esac
+done
+for _v in h5_pct d7_pct; do
+    _t=${!_v}; _t=${_t#-}
+    case "$_t" in ''|*[!0-9]*|????*) printf -v "$_v" '%s' -1 ;; esac
+done
+unset _v _t
 
 # If jq failed the fields are empty — fall back rather than print garbage.
 if [ -z "$model_name" ] && [ -z "$cur_dir" ] && [ -z "$top_cwd" ]; then
@@ -329,10 +341,15 @@ row1="${DIR_C}$(b)${dir_label}${RESET}"
 # Git: branch + dirty count. Cached for 3s — git status is the slowest thing
 # here and this script runs on every keystroke-ish event.
 if [ -n "$lookup_dir" ] && [ -d "$lookup_dir" ]; then
-    git_cache="${TMPDIR:-/tmp}/.claude-statusline-git-$(id -u)-$(printf '%s' "$lookup_dir" | cksum | cut -d' ' -f1)"
+    # The cache lives in a directory only this user can write. A shared /tmp
+    # would let another user plant the file, or a symlink for the write below
+    # to follow.
+    cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/claude-statusline"
+    [ -d "$cache_dir" ] || (umask 077 && mkdir -p "$cache_dir") 2>/dev/null
+    git_cache="$cache_dir/git-$(printf '%s' "$lookup_dir" | cksum | cut -d' ' -f1)"
     now_s=$(date +%s)
     cache_age=999
-    if [ -f "$git_cache" ]; then
+    if [ -f "$git_cache" ] && [ ! -L "$git_cache" ]; then
         # GNU first: on GNU coreutils `stat -f` means --file-system and exits 0
         # with a filesystem dump, so a BSD-first probe never falls through.
         cache_mtime=$(stat -c %Y "$git_cache" 2>/dev/null || stat -f %m "$git_cache" 2>/dev/null)
@@ -351,10 +368,12 @@ if [ -n "$lookup_dir" ] && [ -d "$lookup_dir" ]; then
         else
             git_info=""
         fi
-        printf '%s' "$git_info" > "$git_cache" 2>/dev/null
+        [ -L "$git_cache" ] || printf '%s' "$git_info" > "$git_cache" 2>/dev/null
     fi
     if [ -n "$git_info" ]; then
         IFS=$'\t' read -r git_branch git_dirty <<<"$git_info"
+        git_branch=${git_branch//[[:cntrl:]]/}
+        case "$git_dirty" in ''|*[!0-9]*) git_dirty=0 ;; esac
         row1+="${SEP}${GIT_C}${git_branch}${RESET}"
         if [ -n "$git_dirty" ] && [ "$git_dirty" -gt 0 ] 2>/dev/null; then
             row1+=" ${GIT_DIRTY}✚${git_dirty}${RESET}"
