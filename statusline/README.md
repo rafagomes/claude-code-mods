@@ -20,7 +20,7 @@ Requires `jq`.
 
 ```bash
 git clone https://github.com/rafagomes/claude-code-mods.git
-ln -s "$PWD/claude-code-mods/statusline/statusline-command.sh" ~/.claude/statusline-command.sh
+ln -sf "$PWD/claude-code-mods/statusline/statusline-command.sh" ~/.claude/statusline-command.sh
 ```
 
 Then add to `~/.claude/settings.json`:
@@ -50,4 +50,5 @@ The `refreshInterval` keeps the reset countdown ticking while the session is idl
 - **No context bar or percentage.** On a 1M window the percentage stays in single digits for a whole session, so the token count carries the meaning and its colour says whether to act.
 - **Cost appears only on API-key billing**, from `cost.total_cost_usd`. On a Claude.ai subscription the figure is notional and is not shown.
 - **Width-adaptive** via `$COLUMNS` (needs Claude Code 2.1.153 or later): countdowns drop below 90 columns, limit bars below 70, the context window size below 80.
+- **Treats its input as untrusted.** Directory and branch names are drawn on your terminal, so control characters and escape sequences are stripped, numeric fields must be integers before they reach shell arithmetic, and the git cache lives in a user-only directory (`${XDG_CACHE_HOME:-~/.cache}/claude-statusline`).
 - **Portable and safe to fail.** Works on macOS and Linux, runs a single `jq` pass, caches `git status` for 3 seconds, and always exits 0 — a broken status line is worse than a plain one.
