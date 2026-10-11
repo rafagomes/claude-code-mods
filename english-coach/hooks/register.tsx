@@ -1,19 +1,20 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Feedback, Issue } from '../types'
+import type { Feedback, Issue, Tip } from '../types'
 
 const MAX_CHARS = 3000
 const last = atom({ plugin: 'english-coach', key: 'last' } as const, null)
 
 export const SYSTEM = `You are an English coach for a Brazilian software engineer who wants to sound fluent and native, not just correct.
-You receive one message they wrote to a coding assistant. Review two things:
+You receive one message they wrote to a coding assistant. Review two things, then teach one:
 1. grammar: tense, articles, prepositions, agreement, countable/uncountable nouns, spelling.
 2. fluency: phrasing that is grammatical but unusual, literal translations from Portuguese, false friends, awkward word order, or word choices a native speaker wouldn't pick.
+3. tip: one word, phrasal verb or idiom a native speaker would naturally use to say something in this message, and that the writer did not use. Common in everyday or workplace speech, upper-intermediate to advanced, never rare or literary. Don't repeat an "improved" phrase.
 Ignore code, file paths, identifiers, commands, technical jargon, casual lowercase, and missing final punctuation. Don't nitpick choices natives commonly make in quick chat.
 Reply with JSON only, no prose, no code fence:
-{"issues":[{"kind":"grammar"|"fluency","original":"<exact short phrase>","improved":"<better phrase>","why":"<max 8 words>"}],"natural":"<whole message as a native would write it>"|null}
-At most 5 issues. "natural" only when there are 2+ issues and the message is under 300 characters, else null. Nothing to improve: {"issues":[],"natural":null}`
+{"issues":[{"kind":"grammar"|"fluency","original":"<exact short phrase>","improved":"<better phrase>","why":"<max 8 words>"}],"natural":"<whole message as a native would write it>"|null,"tip":{"phrase":"<the word or expression>","meaning":"<max 10 words>"}}
+At most 5 issues. "natural" only when there are 2+ issues and the message is under 300 characters, else null. Always give a "tip", even with nothing to improve: {"issues":[],"natural":null,"tip":{...}}`
 
 // Drop pasted blocks and fenced code: they aren't the user's own writing.
 export function ownWords(text: string): string {
@@ -31,6 +32,17 @@ export function shouldCheck(raw: string, own: string): boolean {
 }
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim() !== ''
+
+// One line in the band: a tip that is malformed or too long to fit is dropped.
+function parseTip(raw: unknown): Tip | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const t = raw as { phrase?: unknown; meaning?: unknown }
+  if (!isStr(t.phrase) || !isStr(t.meaning)) return null
+  const phrase = t.phrase.trim()
+  const meaning = t.meaning.trim()
+  if (phrase.length > 60 || meaning.length > 120 || /[\r\n]/.test(phrase + meaning)) return null
+  return { phrase, meaning }
+}
 
 function parseJson(reply: string): unknown {
   try {
@@ -52,7 +64,7 @@ function parseJson(reply: string): unknown {
 export function parseFeedback(reply: string, textLength: number): Feedback | null {
   const raw = parseJson(reply)
   if (typeof raw !== 'object' || raw === null) return null
-  const r = raw as { issues?: unknown; natural?: unknown }
+  const r = raw as { issues?: unknown; natural?: unknown; tip?: unknown }
   const issues: Issue[] = (Array.isArray(r.issues) ? r.issues : [])
     .filter(
       (i): i is Issue =>
@@ -63,7 +75,7 @@ export function parseFeedback(reply: string, textLength: number): Feedback | nul
     .slice(0, 5)
     .map(i => ({ kind: i.kind, original: i.original, improved: i.improved, why: isStr(i.why) ? i.why : '' }))
   const wantsNatural = issues.length >= 2 && textLength < 300
-  return { issues, natural: wantsNatural && isStr(r.natural) ? r.natural : null }
+  return { issues, natural: wantsNatural && isStr(r.natural) ? r.natural : null, tip: parseTip(r.tip) }
 }
 
 export function asText(f: Feedback): string {
@@ -71,6 +83,7 @@ export function asText(f: Feedback): string {
     i => `  • [${i.kind}] "${i.original}" → "${i.improved}"${i.why ? ` — ${i.why}` : ''}`,
   )
   if (f.natural) lines.push(`  ✓ Natural: ${f.natural}`)
+  if (f.tip) lines.push(`  ✦ Learn: "${f.tip.phrase}" — ${f.tip.meaning}`)
   return `✎ English\n${lines.join('\n')}`
 }
 
@@ -94,7 +107,7 @@ async function check($: EngineInterface, text: string, gen: number) {
     $.ui.log(`english-coach: unreadable reply: ${r.text.slice(0, 200)}`, { to: 'debug' })
     return
   }
-  if (feedback.issues.length === 0) return
+  if (feedback.issues.length === 0 && feedback.tip === null) return
   await update($, last, () => feedback)
   $.ui.log(asText(feedback))
 }
@@ -140,6 +153,13 @@ export const register: Register = on => {
           <Box marginTop={1}>
             <Text dimColor>Natural: </Text>
             <Text italic>{f.natural}</Text>
+          </Box>
+        ) : null}
+        {f.tip ? (
+          <Box flexWrap="wrap" marginTop={f.issues.length > 0 && !f.natural ? 1 : 0}>
+            <Text color="suggestion">Learn: </Text>
+            <Text bold>{f.tip.phrase}</Text>
+            <Text dimColor>{`  ${f.tip.meaning}`}</Text>
           </Box>
         ) : null}
       </Box>

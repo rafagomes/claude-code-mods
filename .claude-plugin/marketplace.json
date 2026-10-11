@@ -8,7 +8,7 @@
     {
       "name": "english-coach",
       "source": "./english-coach",
-      "description": "Checks the grammar and fluency of each prompt you type, in parallel, and shows corrections above the prompt"
+      "description": "Checks the grammar and fluency of each prompt you type, in parallel, and shows corrections and a word or expression to learn above the prompt"
     },
     {
       "name": "toolbar",

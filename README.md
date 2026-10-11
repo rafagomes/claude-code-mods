@@ -6,7 +6,7 @@ Built and tested on Claude Code 2.1.296; mods need a version with function-hook 
 
 | Mod | What it does |
 |-----|--------------|
-| [`english-coach`](english-coach) | Checks the grammar and fluency of each prompt you write and shows corrections in a band above the prompt |
+| [`english-coach`](english-coach) | Checks the grammar and fluency of each prompt you write and shows corrections, plus a word or expression to learn, in a band above the prompt |
 | [`toolbar`](toolbar) | A **Toolbar** button under the prompt: model and effort picker, open in VS Code, and a clean view that replaces the work log with a step tracker |
 | [`statusline`](statusline) | A status line that shows where you are and what you are driving, and a rate-limit row only when a limit needs attention. A script, not a plugin — [install it by hand](statusline#install) |
 
@@ -36,7 +36,7 @@ Both mods make extra model requests on your account. Read this before installing
 
 ### english-coach
 
-Each prompt you write is checked for grammar *and* fluency — phrasing that is correct but not what a native speaker would say — by a parallel Haiku call, so the turn never waits. Corrections appear as colour-coded bullets (`[grammar]` / `[fluency]`, ~~original~~ → **improved**, reason) in a dismissable band above the prompt, plus a "Natural:" rewrite when a short message (under 300 characters) has two or more issues. A bulleted copy is written to the transcript as a log entry for you, not as part of the conversation.
+Each prompt you write is checked for grammar *and* fluency — phrasing that is correct but not what a native speaker would say — by a parallel Haiku call, so the turn never waits. Corrections appear as colour-coded bullets (`[grammar]` / `[fluency]`, ~~original~~ → **improved**, reason) in a dismissable band above the prompt, plus a "Natural:" rewrite when a short message (under 300 characters) has two or more issues. The last line is a "Learn:" tip — one word, phrasal verb or idiom a native speaker would have used in that message, with its meaning — so the band also appears, with only that line, when there is nothing to correct. A bulleted copy is written to the transcript as a log entry for you, not as part of the conversation.
 
 - **Checked:** prompts typed at the terminal or sent through Remote Control. Prompts from the SDK, background tasks, peers and schedules are not.
 - **Sent:** your own words from the prompt — pasted blocks and fenced code are stripped first — capped at 3,000 characters, one Haiku request per prompt.
