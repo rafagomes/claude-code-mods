@@ -73,8 +73,27 @@ test('drops a tip that is malformed or would not fit one line', () => {
   expect(tip('{"phrase":"  ","meaning":"get to the point"}')).toBeNull()
   expect(tip(JSON.stringify({ phrase: 'x'.repeat(61), meaning: 'm' }))).toBeNull()
   expect(tip(JSON.stringify({ phrase: 'p', meaning: 'm'.repeat(121) }))).toBeNull()
-  expect(tip(JSON.stringify({ phrase: 'p', meaning: 'one\ntwo' }))).toBeNull()
-  expect(tip(JSON.stringify({ phrase: '\u001b[31mp', meaning: 'm' }))).toBeNull()
+})
+
+test('replaces control characters in every text the model returns', () => {
+  const esc = '\u001b[31m'
+  const reply = JSON.stringify({
+    issues: [
+      { kind: 'grammar', original: `a${esc}b`, improved: 'c\u009bd', why: 'one\ntwo' },
+      { kind: 'fluency', original: 'e', improved: '\u202ef', why: '' },
+      { kind: 'fluency', original: 'g', improved: '\u0007' },
+    ],
+    natural: 'first\r\nsecond\u2028third',
+    tip: { phrase: `${esc}kick off`, meaning: 'start\tsomething' },
+  })
+  expect(parseFeedback(reply, 40)).toEqual({
+    issues: [
+      { kind: 'grammar', original: 'a [31mb', improved: 'c d', why: 'one two' },
+      { kind: 'fluency', original: 'e', improved: 'f', why: '' },
+    ],
+    natural: 'first second third',
+    tip: { phrase: '[31mkick off', meaning: 'start something' },
+  })
 })
 
 // The session beneath the mod: every prompt the coach sends to the model.

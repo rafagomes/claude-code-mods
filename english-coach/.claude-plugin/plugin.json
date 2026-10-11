@@ -1,6 +1,6 @@
 {
   "name": "english-coach",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Checks the grammar and fluency of each prompt you type, in parallel, and shows corrections and a word or expression to learn above the prompt",
   "author": { "name": "Rafa Gomes" },
   "types": "./types/index.d.ts"

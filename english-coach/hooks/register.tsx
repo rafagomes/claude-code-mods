@@ -34,16 +34,19 @@ export function shouldCheck(raw: string, own: string): boolean {
   return own.split(/\s+/).filter(Boolean).length >= 4
 }
 
-const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim() !== ''
+// Text from the model is drawn in the terminal and logged to the transcript:
+// control characters (escape sequences, line breaks, C1, bidi overrides) are
+// replaced before anything is checked, so what is validated is what is shown.
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]+/g
+const plain = (v: unknown): string => (typeof v === 'string' ? v.replace(UNSAFE, ' ').trim() : '')
 
 // One line in the band: a tip that is malformed or too long to fit is dropped.
 function parseTip(raw: unknown): Tip | null {
   if (typeof raw !== 'object' || raw === null) return null
   const t = raw as { phrase?: unknown; meaning?: unknown }
-  if (!isStr(t.phrase) || !isStr(t.meaning)) return null
-  const phrase = t.phrase.trim()
-  const meaning = t.meaning.trim()
-  if (phrase.length > 60 || meaning.length > 120 || /[\u0000-\u001f\u007f]/.test(phrase + meaning)) return null
+  const phrase = plain(t.phrase)
+  const meaning = plain(t.meaning)
+  if (phrase === '' || meaning === '' || phrase.length > 60 || meaning.length > 120) return null
   return { phrase, meaning }
 }
 
@@ -69,16 +72,16 @@ export function parseFeedback(reply: string, textLength: number): Feedback | nul
   if (typeof raw !== 'object' || raw === null) return null
   const r = raw as { issues?: unknown; natural?: unknown; tip?: unknown }
   const issues: Issue[] = (Array.isArray(r.issues) ? r.issues : [])
+    .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
+    .map(i => ({ kind: i.kind, original: plain(i.original), improved: plain(i.improved), why: plain(i.why) }))
     .filter(
       (i): i is Issue =>
-        typeof i === 'object' && i !== null &&
         (i.kind === 'grammar' || i.kind === 'fluency') &&
-        isStr(i.original) && isStr(i.improved) && i.original !== i.improved,
+        i.original !== '' && i.improved !== '' && i.original !== i.improved,
     )
     .slice(0, 5)
-    .map(i => ({ kind: i.kind, original: i.original, improved: i.improved, why: isStr(i.why) ? i.why : '' }))
   const wantsNatural = issues.length >= 2 && textLength < 300
-  return { issues, natural: wantsNatural && isStr(r.natural) ? r.natural : null, tip: parseTip(r.tip) }
+  return { issues, natural: (wantsNatural && plain(r.natural)) || null, tip: parseTip(r.tip) }
 }
 
 export function asText(f: Feedback): string {
