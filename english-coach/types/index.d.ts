@@ -4,6 +4,6 @@ export type Feedback = { issues: Issue[]; natural: string | null; tip: Tip | nul
 
 declare module 'claude-code' {
   interface PluginState {
-    'english-coach': { last: Feedback | null }
+    'english-coach': { last: Feedback | null; on: boolean }
   }
 }

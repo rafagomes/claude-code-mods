@@ -5,6 +5,9 @@ import type { Feedback, Issue, Tip } from '../types'
 
 const MAX_CHARS = 3000
 const last = atom({ plugin: 'english-coach', key: 'last' } as const, null)
+// The switch /english-coach flips. Another mod (the toolbar) reads it to draw
+// its own switch, so it is written at session start: unwritten means not loaded.
+const enabled = atom({ plugin: 'english-coach', key: 'on' } as const, true)
 
 export const SYSTEM = `You are an English coach for a Brazilian software engineer who wants to sound fluent and native, not just correct.
 You receive one message they wrote to a coding assistant. Review two things, then teach one:
@@ -113,9 +116,32 @@ async function check($: EngineInterface, text: string, gen: number) {
 }
 
 export const register: Register = on => {
+  on('session.start', async ($, e, next) => {
+    await update($, enabled, saved => saved ?? true)
+    await $.command.register({
+      name: 'english-coach',
+      description: 'Turn the English coach on or off for this session',
+      argumentHint: '[on|off]',
+    })
+    return next(e)
+  })
+
+  on('command.run', { command: 'english-coach' }, async ($, e) => {
+    const arg = e.args.trim()
+    const isOn = arg === 'on' || (arg !== 'off' && !(await read($, enabled)))
+    await update($, enabled, () => isOn)
+    if (!isOn) {
+      // Off also takes down the feedback on show and any check in flight.
+      generation++
+      await update($, last, () => null)
+    }
+    return { text: `English coach ${isOn ? 'on' : 'off'}.` }
+  })
+
   on('prompt.submit', async ($, e, next) => {
     const kind = e.origin.kind
     if (kind !== 'composer' && kind !== 'bridge') return next(e)
+    if (!(await read($, enabled))) return next(e)
 
     // Any new prompt makes the previous feedback, and any check in flight, stale.
     const gen = ++generation
