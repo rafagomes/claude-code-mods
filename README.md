@@ -2,11 +2,11 @@
 
 Mods for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): function-hook plugins that run inside the session and change what you see around the prompt. Each mod is its own plugin — install only the ones you want.
 
-Requires Claude Code 2.1.275 or later.
+Built and tested on Claude Code 2.1.296; mods need a version with function-hook plugins (2.1.275 or later).
 
 | Mod | What it does |
 |-----|--------------|
-| [`english-coach`](english-coach) | Checks the grammar and fluency of every prompt you type and shows corrections in a band above the prompt |
+| [`english-coach`](english-coach) | Checks the grammar and fluency of each prompt you write and shows corrections in a band above the prompt |
 | [`toolbar`](toolbar) | A **Toolbar** button under the prompt: model and effort picker, open in VS Code, and a clean view that replaces the work log with a step tracker |
 
 ## Install
@@ -35,10 +35,12 @@ Both mods make extra model requests on your account. Read this before installing
 
 ### english-coach
 
-Every prompt you type is checked for grammar *and* fluency — phrasing that is correct but not what a native speaker would say — by a parallel Haiku call, so the turn never waits. Corrections appear as colour-coded bullets (`[grammar]` / `[fluency]`, ~~original~~ → **improved**, reason) in a dismissable band above the prompt, plus a "Natural:" rewrite when a message has two or more issues. A bulleted copy goes to the transcript as history; the main model never sees it.
+Each prompt you write is checked for grammar *and* fluency — phrasing that is correct but not what a native speaker would say — by a parallel Haiku call, so the turn never waits. Corrections appear as colour-coded bullets (`[grammar]` / `[fluency]`, ~~original~~ → **improved**, reason) in a dismissable band above the prompt, plus a "Natural:" rewrite when a short message (under 300 characters) has two or more issues. A bulleted copy is written to the transcript as a log entry for you, not as part of the conversation.
 
-- **Sent:** up to 3,000 characters of each checked prompt, one Haiku request per prompt.
-- **Skipped:** slash commands, `!` shell lines, pastes, code fences, and prompts under four words.
+- **Checked:** prompts typed at the terminal or sent through Remote Control. Prompts from the SDK, background tasks, peers and schedules are not.
+- **Sent:** your own words from the prompt — pasted blocks and fenced code are stripped first — capped at 3,000 characters, one Haiku request per prompt.
+- **Skipped entirely:** slash commands, `!` shell lines, and prompts with fewer than four of your own words left after stripping.
+- **Tuned for Portuguese speakers:** the coaching prompt describes the writer as a Brazilian software engineer and looks for literal translations and false friends from Portuguese. It works for anyone, but edit `SYSTEM` in `english-coach/hooks/register.tsx` to describe yourself.
 
 ### toolbar
 
