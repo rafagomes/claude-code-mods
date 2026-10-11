@@ -1,6 +1,6 @@
 # claude-code-mods
 
-Mods for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): function-hook plugins that run inside the session and change what you see around the prompt. Each mod is its own plugin — install only the ones you want.
+Mods for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): function-hook plugins that run inside the session and change what you see around the prompt. Each one installs separately — take only what you want.
 
 Built and tested on Claude Code 2.1.296; mods need a version with function-hook plugins (2.1.275 or later).
 
@@ -8,6 +8,7 @@ Built and tested on Claude Code 2.1.296; mods need a version with function-hook 
 |-----|--------------|
 | [`english-coach`](english-coach) | Checks the grammar and fluency of each prompt you write and shows corrections in a band above the prompt |
 | [`toolbar`](toolbar) | A **Toolbar** button under the prompt: model and effort picker, open in VS Code, and a clean view that replaces the work log with a step tracker |
+| [`statusline`](statusline) | A status line that shows where you are and what you are driving, and a rate-limit row only when a limit needs attention. A script, not a plugin — [install it by hand](statusline#install) |
 
 ## Install
 
