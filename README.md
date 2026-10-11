@@ -2,7 +2,7 @@
 
 Mods for [Claude Code](https://docs.anthropic.com/en/docs/claude-code): function-hook plugins that run inside the session and change what you see around the prompt. Each one installs separately — take only what you want.
 
-Built and tested on Claude Code 2.1.296; mods need a version with function-hook plugins (2.1.275 or later).
+Built and tested on Claude Code 2.1.296; mods need a version with function-hook plugins (2.1.275 or later). The status line is a plain script and only needs `jq`.
 
 | Mod | What it does |
 |-----|--------------|

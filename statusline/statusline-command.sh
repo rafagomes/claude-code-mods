@@ -25,7 +25,7 @@
 #     is cancelled if it is still running when the next update lands, so forking
 #     jq a dozen times is the difference between a live bar and a stale one.
 #   - Degrades by terminal width using $COLUMNS (Claude Code >= 2.1.153).
-#   - Honours NO_COLOR, and drops colour when stdout is redirected.
+#   - Honours NO_COLOR.
 #   - Never exits non-zero and never prints a partial line: a broken status line
 #     is worse than a plain one.
 #
@@ -118,13 +118,14 @@ IFS=$'\x1f' read -r \
           (.thinking.enabled // false | tostring),
           .output_style.name // "",
           (.exceeds_200k_tokens // false | tostring)
-        ] | map(tostring | gsub("[[:cntrl:]]"; " ")) | join("\u001f")' 2>/dev/null)"
+        ] | map(tostring | gsub("[\\p{Cc}\\p{Cf}]"; " ")) | join("\u001f")' 2>/dev/null)"
 
 # The numeric fields feed $(( )), and bash arithmetic evaluates what it is
 # given — a value like `x[$(cmd)]` would run cmd. The payload is not ours, so
 # anything that is not a plain integer is replaced before it is used.
 for _v in ctx_pct ctx_size in_tok out_tok h5_reset d7_reset; do
     case "${!_v}" in ''|*[!0-9]*|????????????????*) printf -v "$_v" '%s' 0 ;; esac
+    printf -v "$_v" '%d' "$((10#${!_v}))"    # a leading zero would read as octal
 done
 for _v in h5_pct d7_pct; do
     _t=${!_v}; _t=${_t#-}
@@ -346,10 +347,13 @@ if [ -n "$lookup_dir" ] && [ -d "$lookup_dir" ]; then
     # to follow.
     cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/claude-statusline"
     [ -d "$cache_dir" ] || (umask 077 && mkdir -p "$cache_dir") 2>/dev/null
-    git_cache="$cache_dir/git-$(printf '%s' "$lookup_dir" | cksum | cut -d' ' -f1)"
+    git_cache=""
+    if [ -d "$cache_dir" ] && [ -O "$cache_dir" ] && [ ! -L "$cache_dir" ]; then
+        git_cache="$cache_dir/git-$(printf '%s' "$lookup_dir" | cksum | cut -d' ' -f1)"
+    fi
     now_s=$(date +%s)
     cache_age=999
-    if [ -f "$git_cache" ] && [ ! -L "$git_cache" ]; then
+    if [ -n "$git_cache" ] && [ -f "$git_cache" ] && [ ! -L "$git_cache" ]; then
         # GNU first: on GNU coreutils `stat -f` means --file-system and exits 0
         # with a filesystem dump, so a BSD-first probe never falls through.
         cache_mtime=$(stat -c %Y "$git_cache" 2>/dev/null || stat -f %m "$git_cache" 2>/dev/null)
@@ -363,16 +367,22 @@ if [ -n "$lookup_dir" ] && [ -d "$lookup_dir" ]; then
     else
         git_branch=$(git -C "$lookup_dir" branch --show-current 2>/dev/null)
         if [ -n "$git_branch" ]; then
-            git_dirty=$(git -C "$lookup_dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+            git_dirty=$(git -C "$lookup_dir" --no-optional-locks -c core.fsmonitor=false status --porcelain 2>/dev/null | wc -l | tr -d ' ')
             git_info="${git_branch}	${git_dirty}"
         else
             git_info=""
         fi
-        [ -L "$git_cache" ] || printf '%s' "$git_info" > "$git_cache" 2>/dev/null
+        if [ -n "$git_cache" ] && [ ! -L "$git_cache" ]; then
+            { printf '%s' "$git_info" > "$git_cache.$$" && mv -f "$git_cache.$$" "$git_cache"; } 2>/dev/null
+        fi
     fi
     if [ -n "$git_info" ]; then
         IFS=$'\t' read -r git_branch git_dirty <<<"$git_info"
-        git_branch=${git_branch//[[:cntrl:]]/}
+        # Byte-wise allowlist: the locale decides what [[:cntrl:]] matches, and
+        # a branch name is drawn on the terminal.
+        _lc=${LC_ALL-}; LC_ALL=C
+        git_branch=${git_branch//[!A-Za-z0-9._\/@+=#-]/}
+        LC_ALL=$_lc; [ -n "$_lc" ] || unset LC_ALL
         case "$git_dirty" in ''|*[!0-9]*) git_dirty=0 ;; esac
         row1+="${SEP}${GIT_C}${git_branch}${RESET}"
         if [ -n "$git_dirty" ] && [ "$git_dirty" -gt 0 ] 2>/dev/null; then
@@ -440,7 +450,7 @@ if [ "$on_subscription" = "0" ] && [ -n "$cost" ] && [ "$cost" != "0" ]; then
     row1+="${SEP}${COST_C}${cost_fmt}${RESET}"
 fi
 
-echo -e "$row1"
+printf '%s\n' "$row1"
 
 # ---------------------------------------------------------------------------
 # Row 2 — rate limits that need attention, with the day + hour they reset
@@ -493,6 +503,6 @@ fi
 
 # Only print a second row when a window is past the threshold. Limits are
 # absent altogether on API-key billing, where there is nothing to reset.
-[ -n "$row2" ] && echo -e "$row2"
+[ -n "$row2" ] && printf '%s\n' "$row2"
 
 exit 0
