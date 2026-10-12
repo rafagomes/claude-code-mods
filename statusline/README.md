@@ -10,7 +10,7 @@ ai-workflow · main ✚2 · Opus 5 (1M) · high · ctx 69k/1M
 | Row | Shows |
 |---|---|
 | **1 — identity** | Directory, git branch and uncommitted count, model, reasoning effort (plus `⚡` in fast mode and any non-default output style), and the context in absolute tokens |
-| **2 — rate-limit alert** | A 5-hour or 7-day window, drawn only once it reaches 70% used, with a usage bar, the **local clock time the allowance resets**, and a countdown |
+| **2 — rate-limit alert** | A 5-hour or 7-day window, drawn only once it reaches its threshold (60% used for the 5-hour window, 70% for the 7-day one), with a usage bar, the **local clock time the allowance resets**, and a countdown |
 
 Only the uncommitted count and the context count move while you work, so row 1 can be read once and then ignored. Row 2 is absent until there is a decision to make.
 
@@ -39,7 +39,8 @@ The `refreshInterval` keeps the reset countdown ticking while the session is idl
 
 | Variable | Default | Effect |
 |---|---|---|
-| `CLAUDE_STATUSLINE_LIMIT_SHOW` | `70` | Percentage at which a rate-limit window is drawn. `0` always shows both windows |
+| `CLAUDE_STATUSLINE_LIMIT_SHOW_5H` | `60` | Percentage at which the 5-hour window is drawn. `0` always shows it |
+| `CLAUDE_STATUSLINE_LIMIT_SHOW` | `70` | Percentage at which the 7-day window is drawn. `0` always shows it |
 | `CLAUDE_STATUSLINE_CTX_IDEAL` | `150000` | Context tokens past which the count turns amber |
 | `NO_COLOR` | unset | Any value disables colour |
 
