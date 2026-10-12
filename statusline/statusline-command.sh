@@ -12,10 +12,12 @@
 # once and then ignored.
 #
 # Row 2 is an alert, not a dashboard. A window is drawn only once it reaches
-# CLAUDE_STATUSLINE_LIMIT_SHOW percent (default 70, the level the bars turn
-# amber), with the local clock time it resets and a countdown, so you can tell
-# whether to keep going or wait it out. Below that there is nothing to decide
-# and the row is not printed. Set the variable to 0 to always show both windows.
+# its threshold, with the local clock time it resets and a countdown, so you can
+# tell whether to keep going or wait it out. The 5-hour window appears at
+# CLAUDE_STATUSLINE_LIMIT_SHOW_5H percent (default 60: early enough to pace the
+# rest of a session), the 7-day window at CLAUDE_STATUSLINE_LIMIT_SHOW percent
+# (default 70, the level the bars turn amber). Below that there is nothing to
+# decide and the row is not printed. Set a variable to 0 to always show its window.
 #
 # The dollar cost appears only on API-key billing; on a Claude.ai subscription
 # the figure is notional and the rate limits are the real budget.
@@ -464,17 +466,23 @@ limit_show=${CLAUDE_STATUSLINE_LIMIT_SHOW:-70}
 case "$limit_show" in
     ''|*[!0-9]*|????*) limit_show=70 ;;
 esac
+# The 5-hour window is drawn earlier: it fills within one sitting, and at 60%
+# there is still time to slow down before it runs out.
+limit_show_5h=${CLAUDE_STATUSLINE_LIMIT_SHOW_5H:-60}
+case "$limit_show_5h" in
+    ''|*[!0-9]*|????*) limit_show_5h=60 ;;
+esac
 
 # Both segments share one clock read — two `date` forks per render, not one per
 # segment per field.
 read -r now_epoch now_ymd <<<"$(date '+%s %Y-%m-%d')"
 
-# limit_segment <label> <used-pct> <resets-at-epoch>
+# limit_segment <label> <used-pct> <resets-at-epoch> <show-from-pct>
 limit_segment() {
-    local label=$1 pct=$2 reset=$3 seg eta when
+    local label=$1 pct=$2 reset=$3 show=$4 seg eta when
     [ -z "$pct" ] && return 0
     [ "$pct" -lt 0 ] 2>/dev/null && return 0
-    [ "$pct" -lt "$limit_show" ] 2>/dev/null && return 0
+    [ "$pct" -lt "$show" ] 2>/dev/null && return 0
 
     seg="${LABEL}${label}${RESET}"
     [ "$width" -ge 70 ] && seg+=" $(bar "$pct" 8)"
@@ -492,8 +500,8 @@ limit_segment() {
 }
 
 row2=""
-h5_seg=$(limit_segment "5h" "$h5_pct" "$h5_reset")
-d7_seg=$(limit_segment "7d" "$d7_pct" "$d7_reset")
+h5_seg=$(limit_segment "5h" "$h5_pct" "$h5_reset" "$limit_show_5h")
+d7_seg=$(limit_segment "7d" "$d7_pct" "$d7_reset" "$limit_show")
 
 [ -n "$h5_seg" ] && row2="$h5_seg"
 if [ -n "$d7_seg" ]; then
